@@ -1,13 +1,12 @@
-FROM openjdk:8-jdk-alpine
+FROM maven:3.8.1-ibmjava-8-alpine AS builder
+LABEL maintainer="IBM Java Engineering at IBM Cloud"
+WORKDIR /
+COPY pom.xml ./
+COPY src src/
+RUN mvn clean package
 
-WORKDIR /app
+# Copy the war file over to the open liberty image
+FROM openliberty/open-liberty:full-java8-openj9-ubi
 
-COPY .mvn/ .mvn
-
-COPY mvnw pom.xml ./
-
-RUN ./mvnw dependency:go-offline
-
-COPY src ./src
-
-CMD ["./mvnw","spring-boot:run"]
+COPY --from=builder --chown=1001:0 src/main/liberty/config/ /config/
+COPY --from=builder --chown=1001:0 target/*.war /config/apps/
